@@ -1,0 +1,107 @@
+fill:
+  fields:
+    bags:
+      required: true
+      default: 1
+      selector:
+        number: {min: 0, max: 3, step: 0.05, unit_of_measurement: sacs, mode: box}
+    full:
+      default: true
+      selector:
+        boolean:
+    when:
+      selector:
+        datetime:
+mark_empty:
+  fields:
+    when:
+      selector:
+        datetime:
+purchase:
+  fields:
+    bags:
+      required: true
+      selector:
+        number: {min: 1, max: 500, step: 1, unit_of_measurement: sacs, mode: box}
+    price_per_bag:
+      selector:
+        number: {min: 0, max: 50, step: 0.01, unit_of_measurement: "€", mode: box}
+    total_eur:
+      selector:
+        number: {min: 0, max: 10000, step: 0.01, unit_of_measurement: "€", mode: box}
+    location:
+      default: supplier
+      selector:
+        select:
+          options: [supplier, home]
+          translation_key: location
+    supplier:
+      selector:
+        text:
+    brand:
+      selector:
+        text:
+    when:
+      selector:
+        datetime:
+transfer:
+  fields:
+    bags:
+      required: true
+      default: 7
+      selector:
+        number: {min: 1, max: 100, step: 1, unit_of_measurement: sacs, mode: box}
+    supplier_remaining:
+      selector:
+        number: {min: 0, max: 1000, step: 1, unit_of_measurement: sacs, mode: box}
+    when:
+      selector:
+        datetime:
+inventory:
+  fields:
+    home_bags:
+      selector:
+        number: {min: 0, max: 200, step: 0.05, unit_of_measurement: sacs, mode: box}
+    supplier_bags:
+      selector:
+        number: {min: 0, max: 1000, step: 1, unit_of_measurement: sacs, mode: box}
+    reservoir_kg:
+      selector:
+        number: {min: 0, max: 30, step: 0.5, unit_of_measurement: kg, mode: box}
+    when:
+      selector:
+        datetime:
+undo_last: {}
+delete_entry:
+  fields:
+    entry_id:
+      required: true
+      selector:
+        text:
+edit_entry:
+  fields:
+    entry_id:
+      required: true
+      selector:
+        text:
+    when:
+      selector:
+        datetime:
+    bags:
+      selector:
+        number: {min: 0, max: 1000, step: 0.05, mode: box}
+    full:
+      selector:
+        boolean:
+import_history:
+  fields:
+    days:
+      default: 10
+      selector:
+        number: {min: 1, max: 60, step: 1, mode: box}
+get_journal:
+  fields:
+    limit:
+      default: 50
+      selector:
+        number: {min: 1, max: 1000, step: 1, mode: box}

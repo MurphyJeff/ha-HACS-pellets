@@ -1,0 +1,211 @@
+blueprint:
+  name: Pellets — notifications et bouton
+  description: >
+    Notifications de l'intégration Pellets (réservoir bas, vide, stock, confirmation
+    de saisie avec « Annuler ») avec plage silencieuse, alerte du soir si le réservoir
+    risque de se vider la nuit, et appuis longs d'un interrupteur IKEA E1743
+    (O long = +1 sac versé, I long = rempli jusqu'au plein).
+  domain: automation
+  input:
+    notify_main:
+      name: Service de notification principal (avec boutons)
+      description: "Exemple : notify.mobile_app_mon_telephone"
+      selector: {text: {}}
+    notify_info:
+      name: Service de notification secondaire (info)
+      description: "Peut être le même que le principal."
+      selector: {text: {}}
+    quiet_start:
+      name: Début de la plage silencieuse
+      default: "22:30:00"
+      selector: {time: {}}
+    quiet_end:
+      name: Fin de la plage silencieuse
+      default: "07:00:00"
+      selector: {time: {}}
+    evening_check:
+      name: Heure de la vérification du soir
+      default: "21:45:00"
+      selector: {time: {}}
+    reservoir_sensor:
+      name: Capteur réservoir (kg)
+      selector: {entity: {integration: pellets, domain: sensor}}
+    eta_sensor:
+      name: Capteur « réservoir vide prévu »
+      selector: {entity: {integration: pellets, domain: sensor}}
+    home_stock_sensor:
+      name: Capteur stock maison
+      selector: {entity: {integration: pellets, domain: sensor}}
+    button_device:
+      name: Interrupteur IKEA E1743 (appuis longs)
+      selector: {device: {integration: mqtt}}
+
+mode: queued
+max: 10
+
+variables:
+  notify_main: !input notify_main
+  notify_info: !input notify_info
+  quiet_start: !input quiet_start
+  quiet_end: !input quiet_end
+  reservoir_sensor: !input reservoir_sensor
+  eta_sensor: !input eta_sensor
+  home_stock_sensor: !input home_stock_sensor
+  quiet: >
+    {% set n = now().strftime('%H:%M:%S') %}
+    {{ (n >= quiet_start or n < quiet_end) if quiet_start > quiet_end else (quiet_start <= n < quiet_end) }}
+
+triggers:
+  - trigger: event
+    event_type: pellets_event
+    id: event
+  - trigger: event
+    event_type: mobile_app_notification_action
+    id: action
+  - trigger: time
+    at: !input evening_check
+    id: evening
+  - trigger: device
+    domain: mqtt
+    device_id: !input button_device
+    type: action
+    subtype: brightness_move_down
+    id: button_bag
+  - trigger: device
+    domain: mqtt
+    device_id: !input button_device
+    type: action
+    subtype: brightness_move_up
+    id: button_full
+
+actions:
+  - choose:
+      # ---------------------------------------------------------- integration events
+      - conditions: "{{ trigger.id == 'event' and trigger.event.data.type == 'entry_added' }}"
+        sequence:
+          - action: "{{ notify_main }}"
+            data:
+              title: "Pellets ✅"
+              message: >
+                {{ trigger.event.data.summary }} — réservoir ~{{ states(reservoir_sensor) }} kg,
+                stock maison {{ states(home_stock_sensor) }} sacs.
+              data:
+                tag: pellets_entry
+                actions:
+                  - action: PELLETS_UNDO
+                    title: "↩️ Annuler"
+      - conditions: "{{ trigger.id == 'event' and trigger.event.data.type in ['empty_detected'] }}"
+        sequence:
+          - action: "{{ notify_main }}"
+            data:
+              title: "🔥 Poêle à sec"
+              message: "{{ trigger.event.data.message }}"
+              data:
+                tag: pellets_alert
+                actions:
+                  - action: PELLETS_EMPTY_YES
+                    title: "Oui, vide"
+                  - action: PELLETS_EMPTY_NO
+                    title: "Non"
+          - if: "{{ not quiet }}"
+            then:
+              - action: "{{ notify_info }}"
+                data:
+                  message: "Poêle : plus de pellets dans le réservoir."
+      - conditions: "{{ trigger.id == 'event' and trigger.event.data.type == 'possible_empty' }}"
+        sequence:
+          - action: "{{ notify_main }}"
+            data:
+              title: "🔥 Poêle arrêté"
+              message: "{{ trigger.event.data.message }}"
+              data:
+                tag: pellets_alert
+                actions:
+                  - action: PELLETS_EMPTY_YES
+                    title: "Oui, vide"
+                  - action: PELLETS_EMPTY_NO
+                    title: "Non"
+      - conditions: "{{ trigger.id == 'event' and trigger.event.data.type == 'reservoir_low' and not quiet }}"
+        sequence:
+          - action: "{{ notify_main }}"
+            data:
+              title: "🔥 Réservoir bas"
+              message: >
+                {{ trigger.event.data.message }}
+                {% set eta = states(eta_sensor) %}{% if eta not in ['unknown','unavailable'] %}
+                Vide vers {{ as_timestamp(eta) | timestamp_custom('%H:%M') }}.{% endif %}
+              data:
+                tag: pellets_alert
+                actions:
+                  - action: PELLETS_FULL
+                    title: "✅ Rempli au plein"
+          - action: "{{ notify_info }}"
+            data:
+              message: "Poêle : réservoir bas, penser à remplir."
+      - conditions: "{{ trigger.id == 'event' and trigger.event.data.type == 'home_stock_low' and not quiet }}"
+        sequence:
+          - action: "{{ notify_main }}"
+            data:
+              title: "Pellets : stock maison bas"
+              message: "{{ trigger.event.data.message }} Passer chez le fournisseur."
+          - action: "{{ notify_info }}"
+            data:
+              message: "{{ trigger.event.data.message }}"
+      - conditions: "{{ trigger.id == 'event' and trigger.event.data.type == 'warning' and not quiet }}"
+        sequence:
+          - action: "{{ notify_main }}"
+            data:
+              title: "Pellets : à vérifier"
+              message: >
+                {% set d = trigger.event.data %}
+                {% if d.get('warning_type') == 'supplier_mismatch' %}Écart fiche fournisseur : attendu {{ d.expected }}, fiche {{ d.sheet }}.
+                {% elif d.get('observed') is not none %}Calibration ignorée (valeur aberrante {{ d.observed }}), vérifie la dernière saisie.
+                {% elif d.get('estimated_kg') is not none %}Remplissage incohérent : {{ d.estimated_kg }} kg estimés pour un réservoir de 20 kg.
+                {% else %}{{ d }}{% endif %}
+      # --------------------------------------------------------- notification buttons
+      - conditions: "{{ trigger.id == 'action' and trigger.event.data.action == 'PELLETS_UNDO' }}"
+        sequence:
+          - action: pellets.undo_last
+          - action: "{{ notify_main }}"
+            data:
+              message: "Dernière saisie annulée."
+              data: {tag: pellets_entry}
+      - conditions: "{{ trigger.id == 'action' and trigger.event.data.action == 'PELLETS_FULL' }}"
+        sequence:
+          - action: pellets.fill
+            data:
+              full: true
+              bags: >
+                {{ ((state_attr(reservoir_sensor, 'sacs_pour_le_plein') | float(1)) * 20) | round(0) / 20 }}
+      - conditions: "{{ trigger.id == 'action' and trigger.event.data.action == 'PELLETS_EMPTY_YES' }}"
+        sequence:
+          - action: pellets.mark_empty
+      # ------------------------------------------------------------ physical button
+      - conditions: "{{ trigger.id == 'button_bag' }}"
+        sequence:
+          - action: pellets.fill
+            data: {bags: 1, full: false}
+      - conditions: "{{ trigger.id == 'button_full' }}"
+        sequence:
+          - action: pellets.fill
+            data:
+              full: true
+              bags: >
+                {{ ((state_attr(reservoir_sensor, 'sacs_pour_le_plein') | float(1)) * 20) | round(0) / 20 }}
+      # ------------------------------------------------------------- evening check
+      - conditions: >
+          {% set eta = states(eta_sensor) %}
+          {{ trigger.id == 'evening' and eta not in ['unknown', 'unavailable', 'none']
+             and as_datetime(eta) < (today_at(quiet_end) + timedelta(days=1)) }}
+        sequence:
+          - action: "{{ notify_main }}"
+            data:
+              title: "🌙 Pellets avant de dormir"
+              message: >
+                Réservoir ~{{ states(reservoir_sensor) }} kg : vide prévu vers
+                {{ as_timestamp(states(eta_sensor)) | timestamp_custom('%H:%M') }}. Remplis avant d'aller te coucher.
+              data:
+                tag: pellets_alert
+                actions:
+                  - action: PELLETS_FULL
+                    title: "✅ Rempli au plein"

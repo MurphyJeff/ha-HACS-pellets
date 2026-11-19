@@ -1,0 +1,86 @@
+# Vue Lovelace « Pellets » — à coller dans un dashboard (Modifier > YAML brut > views).
+title: Pellets
+path: pellets
+icon: mdi:fire
+cards:
+  - type: gauge
+    entity: sensor.pellets_reservoir_rempli
+    name: Réservoir
+    severity: {green: 50, yellow: 25, red: 0}
+  - type: entities
+    title: Réservoir
+    entities:
+      - entity: sensor.pellets_reservoir
+        secondary_info: last-updated
+      - type: attribute
+        entity: sensor.pellets_reservoir
+        attribute: incertitude_kg
+        name: Incertitude (± kg)
+      - sensor.pellets_reservoir_vide_prevu
+      - sensor.pellets_autonomie_reservoir
+      - sensor.pellets_debit_actuel
+      - binary_sensor.pellets_un_sac_entier_rentre
+  - type: horizontal-stack
+    cards:
+      - type: button
+        name: Plein
+        icon: mdi:basket-fill
+        tap_action:
+          action: perform-action
+          perform_action: pellets.fill
+          data: {bags: 1.15, full: true}
+          confirmation: {text: "Rempli jusqu'au plein avec 1,15 sac ? (corrige ensuite si besoin)"}
+      - type: button
+        name: +1 sac
+        icon: mdi:sack
+        tap_action:
+          action: perform-action
+          perform_action: pellets.fill
+          data: {bags: 1, full: false}
+          confirmation: {text: "1 sac versé (pas jusqu'au plein) ?"}
+      - type: button
+        name: Vide
+        icon: mdi:fire-off
+        tap_action:
+          action: perform-action
+          perform_action: pellets.mark_empty
+          confirmation: {text: "Le réservoir est vide ?"}
+      - type: button
+        name: Annuler
+        icon: mdi:undo
+        tap_action:
+          action: perform-action
+          perform_action: pellets.undo_last
+          confirmation: {text: "Annuler la dernière saisie ?"}
+  - type: entities
+    title: Stock
+    entities:
+      - sensor.pellets_stock_maison
+      - type: attribute
+        entity: sensor.pellets_stock_maison
+        attribute: sac_entame
+        name: Sac entamé
+      - sensor.pellets_stock_fournisseur
+      - sensor.pellets_stock_total
+      - sensor.pellets_autonomie_stock_maison
+      - sensor.pellets_autonomie_totale
+      - sensor.pellets_consommation_moyenne
+      - sensor.pellets_achats
+      - sensor.pellets_prix_moyen_du_sac
+  - type: history-graph
+    title: Réservoir (48 h)
+    hours_to_show: 48
+    entities: [sensor.pellets_reservoir]
+  - type: markdown
+    title: Journal
+    content: >
+      {% for e in state_attr('sensor.pellets_journal', 'entrees') or [] %}
+      - {{ e.text }}
+      {% endfor %}
+
+      *Corriger : Paramètres → Appareils et services → Pellets → Configurer → Corriger le journal.*
+  - type: entities
+    title: Modèle
+    entities:
+      - sensor.pellets_facteur_de_calibration
+      - sensor.pellets_ecart_du_modele

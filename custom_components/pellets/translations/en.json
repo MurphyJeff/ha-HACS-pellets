@@ -1,0 +1,335 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Pellets",
+        "description": "Entités du poêle à suivre. Le statut et le palier de puissance sont obligatoires.",
+        "data": {
+          "status_entity": "Statut du poêle",
+          "power_entity": "Palier de puissance réel",
+          "climate_entity": "Thermostat du poêle",
+          "depleted_entity": "Capteur pellets épuisés"
+        }
+      },
+      "model": {
+        "title": "Réglages du modèle",
+        "description": "Temps de vis (cochlée) par palier, menu E9 du poêle (P06 = P1, P07 = P2…). Laisser vide si inconnu : la fiche constructeur est utilisée. Le facteur de départ (1,0 par défaut) s'ajuste seul à chaque remplissage au plein.",
+        "data": {
+          "capacity_kg": "Capacité du réservoir",
+          "bag_kg": "Poids d'un sac",
+          "initial_factor": "Facteur de départ du modèle",
+          "reservoir_low_kg": "Alerte réservoir bas sous",
+          "home_low_bags": "Alerte stock maison sous",
+          "feed_p1": "Vis palier 1",
+          "feed_p2": "Vis palier 2",
+          "feed_p3": "Vis palier 3",
+          "feed_p4": "Vis palier 4",
+          "feed_p5": "Vis palier 5"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Déjà configuré."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Pellets",
+        "menu_options": {
+          "journal": "Corriger le journal",
+          "settings": "Réglages du modèle",
+          "entities": "Entités du poêle"
+        }
+      },
+      "settings": {
+        "title": "Réglages du modèle",
+        "description": "Temps de vis (cochlée) par palier, menu E9 du poêle (P06 = P1, P07 = P2…). Laisser vide si inconnu : la fiche constructeur est utilisée.",
+        "data": {
+          "capacity_kg": "Capacité du réservoir",
+          "bag_kg": "Poids d'un sac",
+          "initial_factor": "Facteur de départ du modèle",
+          "reservoir_low_kg": "Alerte réservoir bas sous",
+          "home_low_bags": "Alerte stock maison sous",
+          "feed_p1": "Vis palier 1",
+          "feed_p2": "Vis palier 2",
+          "feed_p3": "Vis palier 3",
+          "feed_p4": "Vis palier 4",
+          "feed_p5": "Vis palier 5"
+        }
+      },
+      "entities": {
+        "title": "Entités du poêle",
+        "data": {
+          "status_entity": "Statut du poêle",
+          "power_entity": "Palier de puissance réel",
+          "climate_entity": "Thermostat du poêle",
+          "depleted_entity": "Capteur pellets épuisés"
+        }
+      },
+      "journal": {
+        "title": "Corriger le journal",
+        "description": "Choisis l'entrée à modifier ou supprimer. Tout est recalculé après la correction.",
+        "data": {
+          "entry": "Entrée"
+        }
+      },
+      "edit": {
+        "title": "Modifier l'entrée",
+        "description": "{entry}",
+        "data": {
+          "when": "Date et heure",
+          "bags": "Sacs",
+          "full": "Rempli jusqu'au plein",
+          "total_eur": "Montant total",
+          "price_per_bag": "Prix par sac",
+          "supplier_remaining": "Stock restant sur la fiche fournisseur",
+          "home_bags": "Sacs à la maison",
+          "supplier_bags": "Sacs chez le fournisseur",
+          "reservoir_kg": "Réservoir (kg)",
+          "delete": "Supprimer cette entrée"
+        }
+      }
+    },
+    "abort": {
+      "empty_journal": "Le journal est vide."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "reservoir": {
+        "name": "Réservoir"
+      },
+      "reservoir_percent": {
+        "name": "Réservoir rempli"
+      },
+      "hours_left": {
+        "name": "Autonomie réservoir"
+      },
+      "empty_eta": {
+        "name": "Réservoir vide prévu"
+      },
+      "home_stock": {
+        "name": "Stock maison"
+      },
+      "supplier_stock": {
+        "name": "Stock fournisseur"
+      },
+      "total_stock": {
+        "name": "Stock total"
+      },
+      "consumption": {
+        "name": "Consommation"
+      },
+      "daily_consumption": {
+        "name": "Consommation moyenne"
+      },
+      "burn_rate": {
+        "name": "Débit actuel"
+      },
+      "autonomy_home": {
+        "name": "Autonomie stock maison"
+      },
+      "autonomy_total": {
+        "name": "Autonomie totale"
+      },
+      "season_cost": {
+        "name": "Achats"
+      },
+      "avg_price": {
+        "name": "Prix moyen du sac"
+      },
+      "calibration_factor": {
+        "name": "Facteur de calibration"
+      },
+      "model_error": {
+        "name": "Écart du modèle"
+      },
+      "journal": {
+        "name": "Journal"
+      }
+    },
+    "binary_sensor": {
+      "reservoir_low": {
+        "name": "Réservoir bas"
+      },
+      "home_stock_low": {
+        "name": "Stock maison bas"
+      },
+      "full_bag_fits": {
+        "name": "Un sac entier rentre"
+      },
+      "burning": {
+        "name": "Combustion en cours"
+      }
+    }
+  },
+  "selector": {
+    "location": {
+      "options": {
+        "supplier": "Fournisseur",
+        "home": "Maison"
+      }
+    }
+  },
+  "services": {
+    "fill": {
+      "name": "Remplissage",
+      "description": "Enregistre des pellets versés dans le réservoir.",
+      "fields": {
+        "bags": {
+          "name": "Sacs",
+          "description": "Quantité versée (1,15 = un sac + 15 %)."
+        },
+        "full": {
+          "name": "Jusqu'au plein",
+          "description": "Le réservoir est plein après ce remplissage (sert à la calibration)."
+        },
+        "when": {
+          "name": "Quand",
+          "description": "Laisser vide pour maintenant."
+        }
+      }
+    },
+    "mark_empty": {
+      "name": "Réservoir vide",
+      "description": "Constat : le réservoir est vide (ancrage de calibration).",
+      "fields": {
+        "when": {
+          "name": "Quand",
+          "description": "Laisser vide pour maintenant."
+        }
+      }
+    },
+    "purchase": {
+      "name": "Achat",
+      "description": "Enregistre un achat de sacs.",
+      "fields": {
+        "bags": {
+          "name": "Sacs",
+          "description": "Nombre de sacs."
+        },
+        "price_per_bag": {
+          "name": "Prix par sac",
+          "description": "Prix unitaire."
+        },
+        "total_eur": {
+          "name": "Montant total",
+          "description": "Prioritaire sur le prix par sac."
+        },
+        "location": {
+          "name": "Stocké",
+          "description": "Chez le fournisseur ou à la maison."
+        },
+        "supplier": {
+          "name": "Fournisseur",
+          "description": "Nom du fournisseur."
+        },
+        "brand": {
+          "name": "Marque",
+          "description": "Marque des pellets."
+        },
+        "when": {
+          "name": "Quand",
+          "description": "Date de l'achat."
+        }
+      }
+    },
+    "transfer": {
+      "name": "Retrait fournisseur",
+      "description": "Sacs ramenés du fournisseur à la maison.",
+      "fields": {
+        "bags": {
+          "name": "Sacs",
+          "description": "Nombre de sacs ramenés."
+        },
+        "supplier_remaining": {
+          "name": "Stock fin sur la fiche",
+          "description": "Stock restant noté par le fournisseur (fait foi)."
+        },
+        "when": {
+          "name": "Quand",
+          "description": "Date du retrait."
+        }
+      }
+    },
+    "inventory": {
+      "name": "Inventaire",
+      "description": "Recale les stocks et/ou le réservoir sur un comptage.",
+      "fields": {
+        "home_bags": {
+          "name": "Sacs à la maison",
+          "description": "Sacs pleins + fraction du sac entamé."
+        },
+        "supplier_bags": {
+          "name": "Sacs chez le fournisseur",
+          "description": "Stock fournisseur."
+        },
+        "reservoir_kg": {
+          "name": "Réservoir (kg)",
+          "description": "Estimation visuelle du réservoir."
+        },
+        "when": {
+          "name": "Quand",
+          "description": "Date du comptage."
+        }
+      }
+    },
+    "undo_last": {
+      "name": "Annuler la dernière saisie",
+      "description": "Supprime la dernière entrée saisie."
+    },
+    "delete_entry": {
+      "name": "Supprimer une entrée",
+      "description": "Supprime une entrée du journal.",
+      "fields": {
+        "entry_id": {
+          "name": "Identifiant",
+          "description": "Identifiant de l'entrée."
+        }
+      }
+    },
+    "edit_entry": {
+      "name": "Modifier une entrée",
+      "description": "Corrige une entrée du journal.",
+      "fields": {
+        "entry_id": {
+          "name": "Identifiant",
+          "description": "Identifiant de l'entrée."
+        },
+        "when": {
+          "name": "Quand",
+          "description": "Nouvelle date."
+        },
+        "bags": {
+          "name": "Sacs",
+          "description": "Nouvelle quantité."
+        },
+        "full": {
+          "name": "Jusqu'au plein",
+          "description": "Rempli jusqu'au plein."
+        }
+      }
+    },
+    "import_history": {
+      "name": "Importer l'historique",
+      "description": "Reconstruit les périodes de combustion depuis l'historique HA.",
+      "fields": {
+        "days": {
+          "name": "Jours",
+          "description": "Nombre de jours à importer."
+        }
+      }
+    },
+    "get_journal": {
+      "name": "Lire le journal",
+      "description": "Retourne les dernières entrées.",
+      "fields": {
+        "limit": {
+          "name": "Nombre",
+          "description": "Nombre d'entrées."
+        }
+      }
+    }
+  }
+}
