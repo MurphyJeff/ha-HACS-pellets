@@ -67,6 +67,28 @@ cards:
       - sensor.pellets_consommation_moyenne
       - sensor.pellets_achats
       - sensor.pellets_prix_moyen_du_sac
+  - type: entities
+    title: Consommation et combustion
+    entities:
+      - sensor.pellets_consommation_aujourd_hui
+      - type: attribute
+        entity: sensor.pellets_consommation_aujourd_hui
+        attribute: hier_kg
+        name: Hier (kg)
+      - sensor.pellets_cout_aujourd_hui
+      - sensor.pellets_temps_de_combustion_aujourd_hui
+      - sensor.pellets_allumages_aujourd_hui
+      - sensor.pellets_derniere_combustion
+      - sensor.pellets_energie_des_pellets
+      - sensor.pellets_brule_depuis_le_nettoyage
+      - sensor.pellets_cout_d_entretien
+  - type: statistics-graph
+    title: Consommation par jour (kg)
+    chart_type: bar
+    period: day
+    days_to_show: 14
+    stat_types: [change]
+    entities: [sensor.pellets_consommation]
   - type: history-graph
     title: Réservoir (48 h)
     hours_to_show: 48
