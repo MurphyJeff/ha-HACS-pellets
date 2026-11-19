@@ -7,8 +7,8 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
-from homeassistant.core import callback
-from homeassistant.helpers import selector
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er, selector
 from homeassistant.util import dt as dt_util
 
 from . import model
@@ -22,10 +22,39 @@ from .const import (
     CONF_INITIAL_FACTOR,
     CONF_LOW_KG,
     CONF_POWER_ENTITY,
+    CONF_START,
     CONF_STATUS_ENTITY,
     DEFAULTS,
     DOMAIN,
+    RESERVOIR_LEVELS,
 )
+
+# Known stove integrations, then entity-id patterns, used to pre-fill the wizard.
+STOVE_PLATFORMS = ("aguaiot", "micronova", "palazzetti", "edilkamin", "fumis")
+ENTITY_HINTS = {
+    CONF_STATUS_ENTITY: ("_status", "_state"),
+    CONF_POWER_ENTITY: ("_real_power", "_power_level", "_power"),
+    CONF_CLIMATE_ENTITY: ("",),
+    CONF_DEPLETED_ENTITY: ("_pellets_depleted", "_depleted", "_pellet"),
+}
+
+
+def guess_entities(hass: HomeAssistant) -> dict[str, str]:
+    """Best guess of the stove entities, so the user only has to confirm."""
+    registry = er.async_get(hass)
+    stove = [e for e in registry.entities.values() if e.platform in STOVE_PLATFORMS]
+    candidates = [e.entity_id for e in stove] or list(hass.states.async_entity_ids())
+    guess: dict[str, str] = {}
+    for key, domain in ENTITY_KEYS.items():
+        pool = [eid for eid in candidates if eid.startswith(f"{domain}.")]
+        if not stove and key == CONF_CLIMATE_ENTITY:
+            pool = [eid for eid in pool if any(w in eid for w in ("poele", "stove", "pellet"))]
+        for suffix in ENTITY_HINTS[key]:
+            match = next((eid for eid in pool if eid.endswith(suffix) or (suffix and suffix in eid)), None)
+            if match:
+                guess[key] = match
+                break
+    return guess
 
 ENTITY_KEYS = {
     CONF_STATUS_ENTITY: "sensor",
@@ -74,19 +103,50 @@ class PelletsConfigFlow(ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         self._entities: dict[str, Any] = {}
+        self._settings: dict[str, Any] = {}
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Step 1/3: the stove entities, pre-filled when they can be detected."""
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
         if user_input is not None:
             self._entities = user_input
             return await self.async_step_model()
-        return self.async_show_form(step_id="user", data_schema=_entities_schema({}))
+        guess = guess_entities(self.hass)
+        return self.async_show_form(
+            step_id="user",
+            data_schema=_entities_schema(guess),
+            description_placeholders={"found": str(len(guess))},
+        )
 
     async def async_step_model(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Step 2/3: hopper, bags and (optional) auger times."""
         if user_input is not None:
-            return self.async_create_entry(title="Pellets", data=self._entities, options=user_input)
+            self._settings = user_input
+            return await self.async_step_start()
         return self.async_show_form(step_id="model", data_schema=_settings_schema(dict(DEFAULTS)))
+
+    async def async_step_start(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Step 3/3: starting point (stocks, hopper level, history import)."""
+        if user_input is not None:
+            return self.async_create_entry(
+                title="Pellets", data={**self._entities, CONF_START: user_input}, options=self._settings
+            )
+        schema = vol.Schema(
+            {
+                vol.Required("home_bags", default=0): _num(0, 500, 0.05, "sacs"),
+                vol.Required("supplier_bags", default=0): _num(0, 1000, 1, "sacs"),
+                vol.Optional("price_per_bag"): _num(0, 50, 0.01, "€"),
+                vol.Required("reservoir_level", default=""): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=list(RESERVOIR_LEVELS), translation_key="reservoir_level",
+                        mode=selector.SelectSelectorMode.LIST,
+                    )
+                ),
+                vol.Required("history_days", default=10): _num(0, 30, 1, "jours"),
+            }
+        )
+        return self.async_show_form(step_id="start", data_schema=schema)
 
     @staticmethod
     @callback

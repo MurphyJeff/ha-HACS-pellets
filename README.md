@@ -11,7 +11,10 @@ Gestion des pellets pour un poêle à granulés (testé avec l'intégration `agu
 - **HACS** : ajouter ce dépôt comme dépôt personnalisé (type intégration), installer « Pellets », puis redémarrer.
 - **Manuelle** : copier `custom_components/pellets` dans `/config/custom_components/`, puis redémarrer.
 
-Ensuite, aller dans Paramètres > Appareils et services > Ajouter > **Pellets**, et choisir les entités du poêle.
+Ensuite : Paramètres > Appareils et services > Ajouter > **Pellets**. Un assistant en 3 étapes se lance :
+1. **🔥 Ton poêle** : les entités sont détectées automatiquement (aguaiot, Micronova…), il suffit de vérifier.
+2. **⚙️ Ton réservoir et tes sacs** : capacité, poids d'un sac, et en option les temps de vis (menu E9, P06 à P10). Laisse le facteur à 1, il s'apprend seul.
+3. **📦 Ton point de départ** : sacs à la maison, sacs chez le fournisseur, prix du sac, niveau du réservoir. L'historique de chauffe de HA est repris pour apprendre dès le début.
 
 ## Réglages (Configurer)
 - **Réglages du modèle** :

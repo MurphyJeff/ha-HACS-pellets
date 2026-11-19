@@ -13,7 +13,7 @@ from homeassistant.helpers.typing import ConfigType
 from homeassistant.util import dt as dt_util
 
 from . import model
-from .const import DOMAIN
+from .const import CONF_START, DOMAIN
 from .manager import PelletsManager
 
 PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR]
@@ -132,6 +132,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: PelletsConfigEntry) -> b
     entry.runtime_data = manager
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await manager.async_start()
+    if entry.data.get(CONF_START):
+        await manager.async_bootstrap(entry.data[CONF_START])
     entry.async_on_unload(entry.add_update_listener(_async_reload))
     return True
 

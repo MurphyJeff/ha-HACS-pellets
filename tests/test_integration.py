@@ -113,17 +113,38 @@ async def test_entity_ids_used_by_dashboard(hass: HomeAssistant) -> None:
         assert hass.states.get(eid) is not None, eid
 
 
-async def test_config_flow_entities_then_model(hass: HomeAssistant) -> None:
+async def test_setup_wizard_guesses_entities_and_seeds_journal(hass: HomeAssistant) -> None:
+    for eid, state in ENTITIES.items():
+        hass.states.async_set(state, "off")
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
     assert result["step_id"] == "user"
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], {"status_entity": "sensor.poele_status", "power_entity": "sensor.poele_real_power"}
-    )
+    assert result["description_placeholders"]["found"] == "4"
+    schema = {str(k): k.description["suggested_value"] for k in result["data_schema"].schema}
+    assert schema["power_entity"] == "sensor.poele_real_power"
+    assert schema["depleted_entity"] == "binary_sensor.poele_pellets_depleted"
+
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], ENTITIES)
     assert result["step_id"] == "model"
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        {"capacity_kg": 20, "bag_kg": 15, "initial_factor": 0.9, "reservoir_low_kg": 5, "home_low_bags": 3, "feed_p1": 3.0},
+        {"capacity_kg": 20, "bag_kg": 15, "initial_factor": 1.0, "reservoir_low_kg": 5, "home_low_bags": 3, "feed_p1": 3.0},
+    )
+    assert result["step_id"] == "start"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {"home_bags": 6.5, "supplier_bags": 40, "price_per_bag": 6.5, "reservoir_level": "0.5", "history_days": 0},
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["data"]["power_entity"] == "sensor.poele_real_power"
     assert result["options"]["feed_p1"] == 3.0
+    await hass.async_block_till_done()
+
+    assert float(_val(hass, "sensor.pellets_stock_maison")) == 6.5
+    assert float(_val(hass, "sensor.pellets_stock_fournisseur")) == 40
+    assert float(_val(hass, "sensor.pellets_reservoir")) == 10
+    assert float(_val(hass, "sensor.pellets_prix_moyen_du_sac")) == 6.5
+
+    # Reloading must not seed the journal twice.
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert len(entry.runtime_data.entries) == 3

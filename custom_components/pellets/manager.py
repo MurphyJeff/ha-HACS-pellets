@@ -217,8 +217,40 @@ class PelletsManager:
             self._flags["reservoir_low"] = False
         self._save()
         self._recompute()
-        self._fire("entry_added", entry_id=entry["id"], summary=self.describe(entry))
+        if source != "setup":
+            self._fire("entry_added", entry_id=entry["id"], summary=self.describe(entry))
         return entry
+
+    async def async_bootstrap(self, start: dict[str, Any]) -> None:
+        """Seed an empty journal from the setup wizard's starting point (runs once)."""
+        if self.entries:
+            return
+        now = time.time()
+        price = start.get("price_per_bag")
+        for location, key in ((model.LOCATION_HOME, "home_bags"), (model.LOCATION_SUPPLIER, "supplier_bags")):
+            bags = float(start.get(key) or 0)
+            if bags and price:
+                self.add_entry(
+                    model.ENTRY_PURCHASE,
+                    {"bags": bags, "price_per_bag": float(price), "location": location},
+                    ts=now - 2, source="setup",
+                )
+        level = start.get("reservoir_level")
+        self.add_entry(
+            model.ENTRY_INVENTORY,
+            {
+                "home_bags": float(start.get("home_bags") or 0),
+                "supplier_bags": float(start.get("supplier_bags") or 0),
+                "reservoir_kg": float(level) * self.params.capacity_kg if level not in (None, "") else None,
+            },
+            ts=now - 1, source="setup",
+        )
+        days = int(start.get("history_days") or 0)
+        if days:
+            try:
+                await self.async_import_history(days)
+            except Exception:  # noqa: BLE001 - recorder may be missing; the journal is still valid
+                _LOGGER.warning("History import skipped", exc_info=True)
 
     def edit_entry(self, entry_id: str, ts: float | None = None, data: dict[str, Any] | None = None) -> dict[str, Any]:
         entry = self._find(entry_id)

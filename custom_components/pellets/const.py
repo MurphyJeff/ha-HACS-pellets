@@ -15,6 +15,10 @@ CONF_INITIAL_FACTOR = "initial_factor"
 CONF_FEED = "feed_p{}"
 CONF_LOW_KG = "reservoir_low_kg"
 CONF_HOME_LOW_BAGS = "home_low_bags"
+CONF_START = "start"
+
+# Reservoir level choices offered by the setup wizard (fraction of capacity, "" = unknown).
+RESERVOIR_LEVELS = ("", "0", "0.25", "0.5", "0.75", "1")
 
 DEFAULTS = {
     CONF_CAPACITY: 20.0,

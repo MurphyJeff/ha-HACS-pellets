@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "Pellets",
-        "description": "Entités du poêle à suivre. Le statut et le palier de puissance sont obligatoires.",
+        "title": "🔥 1/3 · Ton poêle",
+        "description": "J'ai repéré {found} entité(s) de ton poêle, vérifie-les simplement. Le statut et le palier de puissance sont indispensables ; le thermostat et le capteur « pellets épuisés » rendent l'estimation plus fine.",
         "data": {
           "status_entity": "Statut du poêle",
           "power_entity": "Palier de puissance réel",
@@ -12,8 +12,8 @@
         }
       },
       "model": {
-        "title": "Réglages du modèle",
-        "description": "Temps de vis (cochlée) par palier, menu E9 du poêle (P06 = P1, P07 = P2…). Laisser vide si inconnu : la fiche constructeur est utilisée. Le facteur de départ (1,0 par défaut) s'ajuste seul à chaque remplissage au plein.",
+        "title": "⚙️ 2/3 · Ton réservoir et tes sacs",
+        "description": "Capacité du réservoir : notice du poêle. Poids d'un sac : écrit sur le sac.\n\n**Facteur de départ** : laisse 1. Il s'ajuste tout seul à chaque fois que tu remplis jusqu'au plein.\n\n**Temps de vis (facultatif, mais plus précis)** : sur un poêle Micronova, déverrouille la télécommande, puis menu réglages usine (E9) : P06 = palier 1 … P10 = palier 5. Laisse vide si tu ne les as pas : des valeurs moyennes sont utilisées.",
         "data": {
           "capacity_kg": "Capacité du réservoir",
           "bag_kg": "Poids d'un sac",
@@ -25,6 +25,17 @@
           "feed_p3": "Vis palier 3",
           "feed_p4": "Vis palier 4",
           "feed_p5": "Vis palier 5"
+        }
+      },
+      "start": {
+        "title": "📦 3/3 · Ton point de départ",
+        "description": "Compte tes sacs et jette un œil au réservoir : ce sera ton point de départ. Tout se corrige ensuite dans Configurer > Corriger le journal.\n\nL'historique de chauffe déjà enregistré par Home Assistant sera repris pour commencer à apprendre tout de suite.",
+        "data": {
+          "home_bags": "Sacs à la maison (sac entamé compris, ex. 6,5)",
+          "supplier_bags": "Sacs stockés chez le fournisseur",
+          "price_per_bag": "Prix d'un sac (facultatif)",
+          "reservoir_level": "Niveau du réservoir maintenant",
+          "history_days": "Jours d'historique à reprendre"
         }
       }
     },
@@ -165,10 +176,14 @@
     }
   },
   "selector": {
-    "location": {
+    "reservoir_level": {
       "options": {
-        "supplier": "Fournisseur",
-        "home": "Maison"
+        "": "Je ne sais pas",
+        "0": "Vide",
+        "0.25": "Un quart",
+        "0.5": "À moitié",
+        "0.75": "Trois quarts",
+        "1": "Plein"
       }
     }
   },
