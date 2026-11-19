@@ -158,6 +158,24 @@
       },
       "journal": {
         "name": "Journal"
+      },
+      "consumption_today": {
+        "name": "Consommation aujourd'hui"
+      },
+      "energy": {
+        "name": "Énergie des pellets"
+      },
+      "burn_time_today": {
+        "name": "Temps de combustion aujourd'hui"
+      },
+      "ignitions_today": {
+        "name": "Allumages aujourd'hui"
+      },
+      "last_burn": {
+        "name": "Dernière combustion"
+      },
+      "cost_today": {
+        "name": "Coût aujourd'hui"
       }
     },
     "binary_sensor": {

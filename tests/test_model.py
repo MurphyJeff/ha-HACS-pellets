@@ -131,3 +131,20 @@ def test_inventory_soft_anchor_and_uncertainty():
 def test_unknown_reservoir_until_first_anchor():
     st = model.replay([entry(0, "fill", bags=1)], [], model.Params(), now=H)
     assert st.reservoir_kg is None
+
+
+def test_burn_stats_sessions_levels_and_ignitions():
+    p = model.Params(initial_factor=1.0)
+    rates = p.base_rates()
+    # Session 1: 2 h P3 then 1 h P1 (level change, same session); session 2 later: 1 h P2.
+    segs = [seg(1, 3, 3), seg(3, 4, 1), seg(6, 7, 2)]
+    st = model.burn_stats(segs, p, 0.8, 0, 10 * H)
+    assert st["hours"] == pytest.approx(4)
+    assert st["hours_by_level"] == {1: 1.0, 2: 1.0, 3: 2.0}
+    assert st["ignitions"] == 2
+    assert len(st["sessions"]) == 2
+    assert st["kg"] == pytest.approx(0.8 * (2 * rates[3] + rates[1] + rates[2]))
+    assert st["sessions"][0]["avg_level"] == pytest.approx((2 * 3 + 1) / 3, abs=0.05)
+    # A window starting mid-session counts the burn but not the ignition.
+    part = model.burn_stats(segs, p, 0.8, 2 * H, 5 * H)
+    assert part["hours"] == pytest.approx(2) and part["ignitions"] == 0

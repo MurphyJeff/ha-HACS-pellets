@@ -24,6 +24,14 @@ Ensuite : Paramètres > Appareils et services > Ajouter > **Pellets**. Un assist
   - temps de vis par palier, à relever dans le menu E9 du poêle (P06 = P1, P07 = P2…).
 - **Corriger le journal** : choisir une entrée, puis modifier la date, la quantité ou l'indicateur « plein », ou la supprimer.
 
+## Suivi de la consommation et de la combustion
+- **Consommation aujourd'hui** (kg) : avec la veille et les 7 derniers jours en attributs.
+- **Énergie des pellets** (kWh, à 4,8 kWh/kg) : à ajouter au tableau de bord Énergie de HA.
+- **Temps de combustion aujourd'hui** (h) : détail par palier, pour la veille et pour les 7 derniers jours.
+- **Allumages aujourd'hui** : pour la veille et les 7 derniers jours. Un changement de palier n'est pas compté comme un allumage.
+- **Dernière combustion** (h) : début, fin, kg et palier moyen.
+- **Coût aujourd'hui** (€) : au prix moyen du sac, avec la veille.
+
 ## Services
 | Service | Usage |
 |---|---|

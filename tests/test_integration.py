@@ -55,6 +55,13 @@ async def test_fill_burn_and_undo(hass: HomeAssistant, freezer: FrozenDateTimeFa
     await hass.async_block_till_done()
     expected = 20 - 2 * (0.93 * 6.0 / 3.0) * 0.8
     assert abs(float(_val(hass, "sensor.pellets_reservoir")) - expected) < 0.06
+    burnt = 20 - expected
+    assert abs(float(_val(hass, "sensor.pellets_consommation_aujourd_hui")) - burnt) < 0.06
+    assert abs(float(_val(hass, "sensor.pellets_temps_de_combustion_aujourd_hui")) - 2) < 0.01
+    assert _val(hass, "sensor.pellets_allumages_aujourd_hui") == "1"
+    assert abs(float(_val(hass, "sensor.pellets_energie_des_pellets")) - burnt * 4.8) < 0.3
+    assert abs(float(_val(hass, "sensor.pellets_derniere_combustion")) - 2) < 0.01
+    assert abs(float(_val(hass, "sensor.pellets_cout_aujourd_hui")) - burnt * 6.5 / 15) < 0.05
 
     # Undo the fill -> reservoir unknown again, stock back to 7
     await hass.services.async_call(DOMAIN, "undo_last", {}, blocking=True)

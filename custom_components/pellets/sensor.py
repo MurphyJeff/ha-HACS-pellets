@@ -12,7 +12,8 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfMass, UnitOfTime
+from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfEnergy, UnitOfMass, UnitOfTime
+from homeassistant.util import dt as dt_util
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -38,7 +39,79 @@ def _st(m: PelletsManager) -> Any:
     return m.state
 
 
+def _d(m: PelletsManager, period: str, key: str) -> Any:
+    return (m.derived.get(period) or {}).get(key)
+
+
+def _session_attrs(sess: dict[str, Any] | None) -> dict[str, Any]:
+    if not sess:
+        return {}
+    return {
+        "debut": dt_util.utc_from_timestamp(sess["start"]).isoformat(),
+        "fin": dt_util.utc_from_timestamp(sess["end"]).isoformat(),
+        "kg": round(sess["kg"], 2),
+        "palier_moyen": sess["avg_level"],
+    }
+
+
 SENSORS: tuple[PelletsSensorDescription, ...] = (
+    PelletsSensorDescription(
+        key="consumption_today",
+        translation_key="consumption_today",
+        device_class=SensorDeviceClass.WEIGHT,
+        native_unit_of_measurement=UnitOfMass.KILOGRAMS,
+        suggested_display_precision=1,
+        value=lambda m: _r(_d(m, "today", "kg")),
+        attrs=lambda m: {"hier_kg": _r(_d(m, "yesterday", "kg")), "sept_jours_kg": _r(_d(m, "week", "kg"))},
+    ),
+    PelletsSensorDescription(
+        key="energy",
+        translation_key="energy",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=0,
+        value=lambda m: _r(m.derived.get("energy_kwh"), 2),
+    ),
+    PelletsSensorDescription(
+        key="burn_time_today",
+        translation_key="burn_time_today",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        suggested_display_precision=1,
+        value=lambda m: _r(_d(m, "today", "hours"), 2),
+        attrs=lambda m: {
+            "par_palier_h": _d(m, "today", "hours_by_level"),
+            "hier_h": _r(_d(m, "yesterday", "hours"), 2),
+            "hier_par_palier_h": _d(m, "yesterday", "hours_by_level"),
+            "sept_jours_h": _r(_d(m, "week", "hours"), 1),
+            "sept_jours_par_palier_h": _d(m, "week", "hours_by_level"),
+        },
+    ),
+    PelletsSensorDescription(
+        key="ignitions_today",
+        translation_key="ignitions_today",
+        value=lambda m: _d(m, "today", "ignitions"),
+        attrs=lambda m: {"hier": _d(m, "yesterday", "ignitions"), "sept_jours": _d(m, "week", "ignitions")},
+    ),
+    PelletsSensorDescription(
+        key="last_burn",
+        translation_key="last_burn",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        suggested_display_precision=1,
+        value=lambda m: _r((m.derived.get("last_session") or {}).get("hours"), 2),
+        attrs=lambda m: _session_attrs(m.derived.get("last_session")),
+    ),
+    PelletsSensorDescription(
+        key="cost_today",
+        translation_key="cost_today",
+        device_class=SensorDeviceClass.MONETARY,
+        native_unit_of_measurement="€",
+        suggested_display_precision=2,
+        value=lambda m: _r(m.derived.get("cost_today"), 2),
+        attrs=lambda m: {"hier_eur": _r(m.derived.get("cost_yesterday"), 2)},
+    ),
     PelletsSensorDescription(
         key="reservoir",
         translation_key="reservoir",

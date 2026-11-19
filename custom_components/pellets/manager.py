@@ -18,6 +18,7 @@ from homeassistant.util import dt as dt_util
 
 from . import model
 from .const import (
+    PELLET_KWH_PER_KG,
     BURNING_STATUSES,
     CONF_BAG_KG,
     CONF_CAPACITY,
@@ -403,9 +404,28 @@ class PelletsManager:
             "free_kg": params.capacity_kg - reservoir if reservoir is not None else None,
             "suggested_fill_bags": (params.capacity_kg - reservoir) / params.bag_kg if reservoir is not None else None,
         }
+        self.derived.update(self._burn_derived(st, params, now))
         if fire:
             self._check_alerts(st, params)
         async_dispatcher_send(self.hass, SIGNAL_UPDATE.format(self.entry.entry_id))
+
+    def _burn_derived(self, st: model.State, params: model.Params, now: float) -> dict[str, Any]:
+        """Consumption and burn statistics for today, yesterday and the last 7 days."""
+        midnight = dt_util.start_of_local_day().timestamp()
+        today = model.burn_stats(self.segments, params, st.factor, midnight, now)
+        yesterday = model.burn_stats(self.segments, params, st.factor, midnight - DAY, midnight)
+        week = model.burn_stats(self.segments, params, st.factor, now - 7 * DAY, now)
+        price_kg = st.avg_price / params.bag_kg if st.avg_price else None
+        last = next((x for x in reversed(week["sessions"])), None)
+        return {
+            "today": today,
+            "yesterday": yesterday,
+            "week": week,
+            "energy_kwh": st.total_consumed_kg * PELLET_KWH_PER_KG,
+            "cost_today": today["kg"] * price_kg if price_kg is not None else None,
+            "cost_yesterday": yesterday["kg"] * price_kg if price_kg is not None else None,
+            "last_session": last,
+        }
 
     def _check_alerts(self, st: model.State, params: model.Params) -> None:
         low = st.reservoir_kg is not None and st.reservoir_kg <= float(self.conf(CONF_LOW_KG))

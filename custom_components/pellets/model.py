@@ -298,3 +298,41 @@ def current_rate(params: Params, factor: float, level: int | None) -> float:
         return 0.0
     rates = params.base_rates()
     return factor * rates.get(int(level), rates[3])
+
+
+SESSION_GAP_S = 15 * 60  # burn segments closer than this belong to the same session (level changes)
+
+
+def burn_stats(segments: list[list[Any]], params: Params, factor: float, t0: float, t1: float) -> dict[str, Any]:
+    """Burn hours (total and per level), kg, sessions and ignitions within [t0, t1]."""
+    rates = params.base_rates()
+    hours: dict[int, float] = {}
+    kg = 0.0
+    sessions: list[dict[str, Any]] = []
+    for start, end, level in sorted(segments, key=lambda x: x[0]):
+        end = t1 if end is None else min(float(end), t1)
+        start = float(start)
+        if end <= t0 or start >= t1:
+            continue
+        a, b = max(start, t0), end
+        h = (b - a) / HOUR
+        level = int(level)
+        hours[level] = hours.get(level, 0.0) + h
+        seg_kg = factor * rates.get(level, rates[3]) * h
+        kg += seg_kg
+        if sessions and start - sessions[-1]["end"] <= SESSION_GAP_S:
+            cur = sessions[-1]
+            cur["end"], cur["kg"], cur["hours"] = b, cur["kg"] + seg_kg, cur["hours"] + h
+            cur["level_h"] += level * h
+        else:
+            sessions.append({"start": a, "end": b, "kg": seg_kg, "hours": h, "level_h": level * h,
+                             "ignition": start >= t0})
+    for sess in sessions:
+        sess["avg_level"] = round(sess.pop("level_h") / sess["hours"], 1) if sess["hours"] else None
+    return {
+        "hours": sum(hours.values()),
+        "hours_by_level": {lvl: round(h, 2) for lvl, h in sorted(hours.items())},
+        "kg": kg,
+        "sessions": sessions,
+        "ignitions": sum(1 for x in sessions if x["ignition"]),
+    }
