@@ -51,6 +51,14 @@ SERVICES: dict[str, vol.Schema] = {
             **BASE,
         }
     ),
+    "maintenance": vol.Schema(
+        {
+            vol.Required("kind"): vol.In(model.MAINTENANCE_KINDS),
+            vol.Optional("cost_eur"): vol.All(vol.Coerce(float), vol.Range(min=0)),
+            vol.Optional("note"): cv.string,
+            **BASE,
+        }
+    ),
     "undo_last": vol.Schema({}),
     "delete_entry": vol.Schema({vol.Required("entry_id"): cv.string}),
     "edit_entry": vol.Schema(
@@ -106,6 +114,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 if not data:
                     raise ServiceValidationError("Inventaire vide")
                 entry = mgr.add_entry(model.ENTRY_INVENTORY, data, _ts(call))
+            elif name == "maintenance":
+                entry = mgr.add_entry(model.ENTRY_MAINTENANCE, data, _ts(call))
             elif name == "undo_last":
                 entry = mgr.undo_last()
             elif name == "delete_entry":

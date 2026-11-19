@@ -227,6 +227,12 @@ class PelletsOptionsFlow(OptionsFlow):
         if kind == model.ENTRY_INVENTORY:
             for key, unit in (("home_bags", "sacs"), ("supplier_bags", "sacs"), ("reservoir_kg", "kg")):
                 fields[vol.Optional(key, description={"suggested_value": d.get(key)})] = _num(0, 10000, 0.05, unit)
+        if kind == model.ENTRY_MAINTENANCE:
+            fields[vol.Required("kind", default=d.get("kind", "entretien"))] = selector.SelectSelector(
+                selector.SelectSelectorConfig(options=list(model.MAINTENANCE_KINDS), translation_key="maintenance_kind")
+            )
+            fields[vol.Optional("cost_eur", description={"suggested_value": d.get("cost_eur")})] = _num(0, 5000, 0.01, "€")
+            fields[vol.Optional("note", description={"suggested_value": d.get("note")})] = selector.TextSelector()
         fields[vol.Optional("delete", default=False)] = selector.BooleanSelector()
         return self.async_show_form(
             step_id="edit",

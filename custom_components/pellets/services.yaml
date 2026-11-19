@@ -17,6 +17,23 @@ mark_empty:
     when:
       selector:
         datetime:
+maintenance:
+  fields:
+    kind:
+      required: true
+      selector:
+        select:
+          options: [nettoyage, entretien, ramonage, reparation, autre]
+          translation_key: maintenance_kind
+    cost_eur:
+      selector:
+        number: {min: 0, max: 5000, step: 0.01, unit_of_measurement: "€", mode: box}
+    note:
+      selector:
+        text:
+    when:
+      selector:
+        datetime:
 purchase:
   fields:
     bags:

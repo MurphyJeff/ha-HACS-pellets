@@ -98,7 +98,10 @@
           "home_bags": "Sacs à la maison",
           "supplier_bags": "Sacs chez le fournisseur",
           "reservoir_kg": "Réservoir (kg)",
-          "delete": "Supprimer cette entrée"
+          "delete": "Supprimer cette entrée",
+          "kind": "Type d'entretien",
+          "cost_eur": "Coût",
+          "note": "Note"
         }
       }
     },
@@ -176,6 +179,12 @@
       },
       "cost_today": {
         "name": "Coût aujourd'hui"
+      },
+      "maintenance_cost": {
+        "name": "Coût d'entretien"
+      },
+      "kg_since_cleaning": {
+        "name": "Brûlé depuis le nettoyage"
       }
     },
     "binary_sensor": {
@@ -202,6 +211,15 @@
         "0.5": "À moitié",
         "0.75": "Trois quarts",
         "1": "Plein"
+      }
+    },
+    "maintenance_kind": {
+      "options": {
+        "nettoyage": "Nettoyage",
+        "entretien": "Entretien",
+        "ramonage": "Ramonage",
+        "reparation": "Réparation",
+        "autre": "Autre"
       }
     }
   },
@@ -361,6 +379,24 @@
         "limit": {
           "name": "Nombre",
           "description": "Nombre d'entrées."
+        }
+      }
+    },
+    "maintenance": {
+      "name": "Entretien / nettoyage",
+      "description": "Nettoyage, entretien, ramonage ou réparation du poêle (sans effet sur le stock).",
+      "fields": {
+        "kind": {
+          "name": "Type"
+        },
+        "cost_eur": {
+          "name": "Coût"
+        },
+        "note": {
+          "name": "Note"
+        },
+        "when": {
+          "name": "Date"
         }
       }
     }

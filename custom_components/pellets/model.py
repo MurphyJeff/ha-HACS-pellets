@@ -36,7 +36,12 @@ ENTRY_EMPTY = "empty"
 ENTRY_PURCHASE = "purchase"
 ENTRY_TRANSFER = "transfer"
 ENTRY_INVENTORY = "inventory"
-ENTRY_TYPES = (ENTRY_FILL, ENTRY_EMPTY, ENTRY_PURCHASE, ENTRY_TRANSFER, ENTRY_INVENTORY)
+ENTRY_MAINTENANCE = "maintenance"
+ENTRY_TYPES = (ENTRY_FILL, ENTRY_EMPTY, ENTRY_PURCHASE, ENTRY_TRANSFER, ENTRY_INVENTORY, ENTRY_MAINTENANCE)
+
+# Maintenance kinds: no effect on stock or consumption; "cleaning" kinds reset the cleaning counter.
+MAINTENANCE_KINDS = ("nettoyage", "entretien", "ramonage", "reparation", "autre")
+CLEANING_KINDS = ("nettoyage", "entretien", "ramonage")
 
 LOCATION_HOME = "home"
 LOCATION_SUPPLIER = "supplier"
@@ -105,6 +110,8 @@ class State:
     warnings: list[dict[str, Any]] = field(default_factory=list)
     consumed_since_anchor_kg: float = 0.0
     soft_anchor: bool = False
+    maintenance_eur: float = 0.0
+    last_maintenance: dict[str, float] = field(default_factory=dict)
 
     @property
     def calibration_count(self) -> int:
@@ -256,6 +263,9 @@ def replay(
                         {"ts": ts, "type": "supplier_mismatch", "expected": state.supplier_bags, "sheet": remaining}
                     )
                 state.supplier_bags = remaining
+        elif kind == ENTRY_MAINTENANCE:
+            state.maintenance_eur += float(data.get("cost_eur") or 0.0)
+            state.last_maintenance[str(data.get("kind", "autre"))] = ts
         elif kind == ENTRY_INVENTORY:
             if data.get("home_bags") is not None:
                 state.home_bags = float(data["home_bags"])
@@ -336,3 +346,9 @@ def burn_stats(segments: list[list[Any]], params: Params, factor: float, t0: flo
         "sessions": sessions,
         "ignitions": sum(1 for x in sessions if x["ignition"]),
     }
+
+
+def last_cleaning_ts(state: State) -> float | None:
+    """Most recent cleaning-type maintenance, if any."""
+    stamps = [ts for kind, ts in state.last_maintenance.items() if kind in CLEANING_KINDS]
+    return max(stamps) if stamps else None

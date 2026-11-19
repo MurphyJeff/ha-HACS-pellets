@@ -148,3 +148,16 @@ def test_burn_stats_sessions_levels_and_ignitions():
     # A window starting mid-session counts the burn but not the ignition.
     part = model.burn_stats(segs, p, 0.8, 2 * H, 5 * H)
     assert part["hours"] == pytest.approx(2) and part["ignitions"] == 0
+
+
+def test_maintenance_has_no_stock_effect_and_tracks_cleaning():
+    p = model.Params()
+    entries = [
+        entry(0, "purchase", bags=10, price_per_bag=6.5, location="home"),
+        {**entry(1, "maintenance", cost_eur=160), "data": {"kind": "ramonage", "cost_eur": 160}},
+        {**entry(2, "maintenance"), "data": {"kind": "nettoyage"}},
+    ]
+    st = model.replay(entries, [], p, now=3 * H)
+    assert st.home_bags == 10 and st.avg_price == pytest.approx(6.5)
+    assert st.maintenance_eur == 160
+    assert model.last_cleaning_ts(st) == 2 * H

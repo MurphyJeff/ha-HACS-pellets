@@ -54,7 +54,28 @@ def _session_attrs(sess: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def _iso(ts: float | None) -> str | None:
+    return None if ts is None else dt_util.utc_from_timestamp(ts).isoformat()
+
+
 SENSORS: tuple[PelletsSensorDescription, ...] = (
+    PelletsSensorDescription(
+        key="maintenance_cost",
+        translation_key="maintenance_cost",
+        device_class=SensorDeviceClass.MONETARY,
+        native_unit_of_measurement="€",
+        suggested_display_precision=2,
+        value=lambda m: _r(_st(m).maintenance_eur, 2),
+        attrs=lambda m: {f"dernier_{k}": _iso(ts) for k, ts in _st(m).last_maintenance.items()},
+    ),
+    PelletsSensorDescription(
+        key="kg_since_cleaning",
+        translation_key="kg_since_cleaning",
+        device_class=SensorDeviceClass.WEIGHT,
+        native_unit_of_measurement=UnitOfMass.KILOGRAMS,
+        suggested_display_precision=0,
+        value=lambda m: _r(m.derived.get("kg_since_cleaning")),
+    ),
     PelletsSensorDescription(
         key="consumption_today",
         translation_key="consumption_today",

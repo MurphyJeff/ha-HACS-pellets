@@ -308,6 +308,12 @@ class PelletsManager:
             txt = f"retrait fournisseur {fmt_bags(d.get('bags', 0))} sacs"
             if d.get("supplier_remaining") is not None:
                 txt += f" (fiche : {fmt_bags(d['supplier_remaining'])})"
+        elif kind == model.ENTRY_MAINTENANCE:
+            txt = d.get("kind", "entretien")
+            if d.get("cost_eur"):
+                txt += f" {d['cost_eur']:.2f} €".replace(".", ",")
+            if d.get("note"):
+                txt += f" ({d['note']})"
         else:
             parts = [
                 f"{label} {fmt_bags(d[key])}"
@@ -425,6 +431,10 @@ class PelletsManager:
             "cost_today": today["kg"] * price_kg if price_kg is not None else None,
             "cost_yesterday": yesterday["kg"] * price_kg if price_kg is not None else None,
             "last_session": last,
+            "kg_since_cleaning": (
+                model.consumed_between(self.segments, params, st.factor, cleaned, now)
+                if (cleaned := model.last_cleaning_ts(st)) is not None else None
+            ),
         }
 
     def _check_alerts(self, st: model.State, params: model.Params) -> None:

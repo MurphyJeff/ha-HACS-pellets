@@ -40,6 +40,7 @@ Ensuite : Paramètres > Appareils et services > Ajouter > **Pellets**. Un assist
 | `pellets.purchase` | Achat : `bags`, `total_eur` ou `price_per_bag`, `location` (`supplier` ou `home`) |
 | `pellets.transfer` | Sacs ramenés du fournisseur, avec `supplier_remaining` (le stock noté sur la fiche fait foi) |
 | `pellets.inventory` | Recalage sur un comptage : `home_bags`, `supplier_bags`, `reservoir_kg` |
+| `pellets.maintenance` | Nettoyage, entretien, ramonage ou réparation : `kind`, `cost_eur`, `note`. Sans effet sur le stock ; remet à zéro « Brûlé depuis le nettoyage » |
 | `pellets.undo_last`, `pellets.edit_entry`, `pellets.delete_entry` | Corrections |
 | `pellets.import_history` | Reconstruit les périodes de combustion depuis l'historique HA |
 | `pellets.get_journal` | Renvoie le journal |
