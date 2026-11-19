@@ -322,16 +322,23 @@ class PelletsManager:
 
         end = dt_util.utcnow()
         start = end - timedelta(days=days)
+        status_id = self.conf(CONF_STATUS_ENTITY)
         climate_id = self.conf(CONF_CLIMATE_ENTITY)
         power_id = self.conf(CONF_POWER_ENTITY)
+        ids = [i for i in (status_id, climate_id, power_id) if i]
         states = await get_instance(self.hass).async_add_executor_job(
-            lambda: history.get_significant_states(
-                self.hass, start, end, [climate_id, power_id], None, True, False, False, False
-            )
+            lambda: history.get_significant_states(self.hass, start, end, ids, None, True, False, False, False)
         )
+        # The stove status is the reliable burn signal: the thermostat reports "heating"
+        # through standby and ignition too. Fall back to it only without status history.
+        use_status = bool(states.get(status_id))
         timeline: list[tuple[float, str, Any]] = []
-        for st in states.get(climate_id, []):
-            timeline.append((st.last_changed.timestamp(), "c", st.attributes.get("hvac_action") == "heating"))
+        if use_status:
+            for st in states.get(status_id, []):
+                timeline.append((st.last_changed.timestamp(), "b", st.state in BURNING_STATUSES))
+        else:
+            for st in states.get(climate_id, []):
+                timeline.append((st.last_changed.timestamp(), "b", st.attributes.get("hvac_action") == "heating"))
         for st in states.get(power_id, []):
             try:
                 timeline.append((st.last_changed.timestamp(), "p", int(float(st.state))))
@@ -341,7 +348,7 @@ class PelletsManager:
         new: list[list[Any]] = []
         heating, level = False, 3
         for ts, kind, value in timeline:
-            if kind == "c":
+            if kind == "b":
                 heating = value
             else:
                 level = max(1, min(5, value))
