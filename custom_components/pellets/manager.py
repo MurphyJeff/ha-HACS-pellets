@@ -58,6 +58,7 @@ class PelletsManager:
         self.derived: dict[str, Any] = {}
         self._unsubs: list[Any] = []
         self._depleted_since: float | None = None
+        self.schedule: list[model.Slot] = []
         self._flags: dict[str, bool] = {}
         self._known_warnings: set[str] = set()
 
@@ -397,12 +398,29 @@ class PelletsManager:
         hourly = per_s_3d * 3600 if per_s_3d else None
         reservoir = st.reservoir_kg
         hours_left = reservoir / hourly if reservoir is not None and hourly else None
+        empty_eta = dt_util.utc_from_timestamp(now + hours_left * 3600) if hours_left is not None else None
+        slots = self._read_schedule()
+        eta_source = "moyenne 3 jours"
+        if slots and reservoir is not None:
+            tz = dt_util.get_default_time_zone()
+            span = min(3 * DAY, now - first)
+            win_h = model.window_hours(slots, now - span, now, tz)
+            if win_h >= 6:
+                per_win_h = model.consumed_between(self.segments, params, st.factor, now - span, now) / win_h
+                eta_ts = model.project_empty(reservoir, per_win_h, slots, now, tz)
+                if eta_ts is not None:
+                    empty_eta = dt_util.utc_from_timestamp(eta_ts)
+                    hours_left = (eta_ts - now) / 3600
+                    eta_source = "programme du poêle"
+        self.schedule = slots or []
         self.derived = {
             "burn_rate": model.current_rate(params, st.factor, open_seg[2] if open_seg else None),
             "power_level": open_seg[2] if open_seg else 0,
             "daily_kg": daily,
             "hours_left": hours_left,
-            "empty_eta": dt_util.utc_from_timestamp(now + hours_left * 3600) if hours_left is not None else None,
+            "empty_eta": empty_eta,
+            "eta_source": eta_source,
+            "schedule": [x.label() for x in slots] if slots else [],
             "autonomy_home_days": (st.home_bags * params.bag_kg + (reservoir or 0)) / daily if daily else None,
             "autonomy_total_days": (
                 ((st.home_bags + st.supplier_bags) * params.bag_kg + (reservoir or 0)) / daily if daily else None
@@ -414,6 +432,39 @@ class PelletsManager:
         if fire:
             self._check_alerts(st, params)
         async_dispatcher_send(self.hass, SIGNAL_UPDATE.format(self.entry.entry_id))
+
+    def _read_schedule(self) -> list[model.Slot] | None:
+        """Enabled weekly programs read from the Micronova (aguaiot) stove behind the climate entity.
+        Returns None when unavailable (other brand, not loaded yet, registers missing)."""
+        try:
+            from homeassistant.helpers import entity_registry as er
+
+            climate_id = self.conf(CONF_CLIMATE_ENTITY)
+            ent = er.async_get(self.hass).async_get(climate_id) if climate_id else None
+            entry = self.hass.config_entries.async_get_entry(ent.config_entry_id) if ent and ent.config_entry_id else None
+            if not entry or entry.domain != "aguaiot":
+                return None
+            agua = getattr(getattr(entry, "runtime_data", None), "agua", None)
+            devices = list(getattr(agua, "devices", []) or [])
+            dev = next((d for d in devices if str(getattr(d, "id_device", "")) in (ent.unique_id or "")), devices[0] if devices else None)
+            if dev is None:
+                return None
+            days_keys = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
+            slots: list[model.Slot] = []
+            for p in range(1, 7):
+                val = lambda k: dev.get_register_value(f"chrono_p{p}_{k}_set")  # noqa: E731
+                if not val("enable"):
+                    continue
+                start, stop = val("start"), val("stop")
+                if start is None or stop is None or int(start) == int(stop):
+                    continue
+                days = frozenset(i for i, k in enumerate(days_keys) if val(f"day_{k}"))
+                if days:
+                    slots.append(model.Slot(int(start) * 10, int(stop) * 10, days))
+            return slots or None
+        except Exception:  # noqa: BLE001 - optional enrichment, never break the model
+            _LOGGER.debug("stove schedule unavailable", exc_info=True)
+            return None
 
     def _burn_derived(self, st: model.State, params: model.Params, now: float) -> dict[str, Any]:
         """Consumption and burn statistics for today, yesterday and the last 7 days."""

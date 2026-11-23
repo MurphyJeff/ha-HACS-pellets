@@ -171,6 +171,7 @@ SENSORS: tuple[PelletsSensorDescription, ...] = (
         translation_key="empty_eta",
         device_class=SensorDeviceClass.TIMESTAMP,
         value=lambda m: m.derived.get("empty_eta"),
+        attrs=lambda m: {"calcul": m.derived.get("eta_source"), "programme": m.derived.get("schedule")},
     ),
     PelletsSensorDescription(
         key="home_stock",

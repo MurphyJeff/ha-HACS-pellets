@@ -352,3 +352,71 @@ def last_cleaning_ts(state: State) -> float | None:
     """Most recent cleaning-type maintenance, if any."""
     stamps = [ts for kind, ts in state.last_maintenance.items() if kind in CLEANING_KINDS]
     return max(stamps) if stamps else None
+
+
+# ---------------------------------------------------------------------------
+# Heating schedule (stove "chrono" programs) and schedule-aware empty forecast
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class Slot:
+    """One weekly program: local minutes ``start``..``stop`` on ``days`` (0 = Monday)."""
+
+    start: int
+    stop: int
+    days: frozenset[int]
+
+    def label(self) -> str:
+        names = ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"]
+        d = sorted(self.days)
+        days = "tous les jours" if len(d) == 7 else ", ".join(names[i] for i in d)
+        return f"{self.start // 60:02d}:{self.start % 60:02d}–{self.stop // 60:02d}:{self.stop % 60:02d} {days}"
+
+
+def schedule_windows(slots: list[Slot], t0: float, t1: float, tz: Any) -> list[tuple[float, float]]:
+    """Heating windows (timestamps, merged) overlapping [t0, t1]. A program whose stop is
+    before its start runs past midnight."""
+    from datetime import datetime, timedelta
+
+    out: list[tuple[float, float]] = []
+    day = datetime.fromtimestamp(t0, tz).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
+    end_day = datetime.fromtimestamp(t1, tz)
+    while day <= end_day:
+        for s in slots:
+            if day.weekday() not in s.days:
+                continue
+            a = day + timedelta(minutes=s.start)
+            b = day + timedelta(minutes=s.stop) + (timedelta(days=1) if s.stop <= s.start else timedelta())
+            a_ts, b_ts = max(a.timestamp(), t0), min(b.timestamp(), t1)
+            if b_ts > a_ts:
+                out.append((a_ts, b_ts))
+        day += timedelta(days=1)
+    out.sort()
+    merged: list[tuple[float, float]] = []
+    for a, b in out:
+        if merged and a <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], b))
+        else:
+            merged.append((a, b))
+    return merged
+
+
+def window_hours(slots: list[Slot], t0: float, t1: float, tz: Any) -> float:
+    return sum(b - a for a, b in schedule_windows(slots, t0, t1, tz)) / HOUR
+
+
+def project_empty(kg: float, kg_per_window_h: float, slots: list[Slot], now: float, tz: Any,
+                  horizon_days: float = 21) -> float | None:
+    """Timestamp at which ``kg`` runs out, burning ``kg_per_window_h`` only inside the
+    heating windows. None if the reservoir outlasts the horizon or nothing is burned."""
+    if kg <= 0:
+        return now
+    if kg_per_window_h <= 0 or not slots:
+        return None
+    left = kg
+    for a, b in schedule_windows(slots, now, now + horizon_days * 86400, tz):
+        burn = kg_per_window_h * (b - a) / HOUR
+        if burn >= left:
+            return a + left / kg_per_window_h * HOUR
+        left -= burn
+    return None

@@ -161,3 +161,39 @@ def test_maintenance_has_no_stock_effect_and_tracks_cleaning():
     assert st.home_bags == 10 and st.avg_price == pytest.approx(6.5)
     assert st.maintenance_eur == 160
     assert model.last_cleaning_ts(st) == 2 * H
+
+
+# --- programme du poêle -----------------------------------------------------
+from datetime import datetime, timezone  # noqa: E402
+
+UTC = timezone.utc
+P6 = model.Slot(6 * 60 + 20, 22 * 60 + 30, frozenset(range(7)))  # 06:20–22:30 tous les jours
+
+
+def ts(y, mo, d, h, mi=0):
+    return datetime(y, mo, d, h, mi, tzinfo=UTC).timestamp()
+
+
+def test_schedule_windows_merge_and_clip():
+    w = model.schedule_windows([P6], ts(2026, 11, 23, 12), ts(2026, 11, 24, 12), UTC)
+    assert w == [(ts(2026, 11, 23, 12), ts(2026, 11, 23, 22, 30)), (ts(2026, 11, 24, 6, 20), ts(2026, 11, 24, 12))]
+
+
+def test_window_past_midnight():
+    night = model.Slot(22 * 60, 2 * 60, frozenset({0}))  # lundi 22:00 → mardi 02:00
+    w = model.schedule_windows([night], ts(2026, 11, 23, 0), ts(2026, 11, 25, 0), UTC)  # 23/11/2026 = lundi
+    assert w == [(ts(2026, 11, 23, 22), ts(2026, 11, 24, 2))]
+
+
+def test_project_empty_skips_night():
+    # 10 kg à 1 kg par heure de programme, il est 20:00 : 2,5 h ce soir, puis 7,5 h demain dès 06:20
+    eta = model.project_empty(10, 1.0, [P6], ts(2026, 11, 23, 20), UTC)
+    assert eta == pytest.approx(ts(2026, 11, 24, 13, 50))
+
+
+def test_project_empty_edge_cases():
+    now = ts(2026, 11, 23, 3)
+    assert model.project_empty(0, 1.0, [P6], now, UTC) == now
+    assert model.project_empty(5, 0.0, [P6], now, UTC) is None
+    assert model.project_empty(5, 1.0, [], now, UTC) is None
+    assert model.project_empty(5, 1.0, [P6], now, UTC) == pytest.approx(ts(2026, 11, 23, 11, 20))
