@@ -30,8 +30,12 @@ def _reservoir_low(m: PelletsManager) -> bool | None:
 
 
 def _full_bag_fits(m: PelletsManager) -> bool | None:
+    """A whole bag fits even if the model is wrong by 2 sigma (reservoir underestimated)."""
     free = m.derived.get("free_kg")
-    return None if free is None else free >= m.params.bag_kg
+    if free is None:
+        return None
+    sigma = (m.state.reservoir_sigma_kg or 0.0) if m.state else 0.0
+    return free - 2 * sigma >= m.params.bag_kg
 
 
 BINARY: tuple[PelletsBinaryDescription, ...] = (

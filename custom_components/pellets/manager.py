@@ -144,12 +144,17 @@ class PelletsManager:
         level = self._burning_level()
         open_seg = self.segments[-1] if self.segments and self.segments[-1][1] is None else None
         was = open_seg is not None
+        changed = False
         if open_seg is not None and (level is None or level != open_seg[2]):
             open_seg[1] = now
             open_seg = None
+            changed = True
         if level is not None and open_seg is None:
             self.segments.append([now, None, level])
-        if was != (level is not None) or (level is not None and was):
+            changed = True
+        # Save only when a segment opens or closes. Saving on every stove update while burning
+        # kept postponing the delayed write: nothing reached the disk during a whole burn.
+        if changed:
             self._save()
         return was, level is not None
 
