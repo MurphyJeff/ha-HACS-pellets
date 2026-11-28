@@ -197,3 +197,21 @@ def test_project_empty_edge_cases():
     assert model.project_empty(5, 0.0, [P6], now, UTC) is None
     assert model.project_empty(5, 1.0, [], now, UTC) is None
     assert model.project_empty(5, 1.0, [P6], now, UTC) == pytest.approx(ts(2026, 11, 23, 11, 20))
+
+
+def test_unmeasured_full_fill_anchors_without_calibrating():
+    """Un plein « quantité estimée » (measured=False) recale le réservoir mais ne touche pas au facteur."""
+    from custom_components.pellets import model
+
+    p = model.Params(capacity_kg=20, bag_kg=15, initial_factor=1.0, feed_s={1: 3.2, 2: 4.8, 3: 6.5, 4: 8.2, 5: 9.9})
+    h = 3600.0
+    segs = [[0.0, 10 * h, 1]]
+    base = [{"id": "a", "ts": 0.0, "type": "fill", "data": {"bags": 1.0, "full": True}}]
+    echo = base + [{"id": "b", "ts": 10 * h, "type": "fill", "data": {"bags": 0.5, "full": True, "measured": False}}]
+    st = model.replay(echo, segs, p, 10 * h + 1)
+    assert st.factor == 1.0
+    assert not st.calibrations
+    assert st.reservoir_kg == 20.0
+    measured = base + [{"id": "b", "ts": 10 * h, "type": "fill", "data": {"bags": 0.5, "full": True}}]
+    st2 = model.replay(measured, segs, p, 10 * h + 1)
+    assert st2.calibrations and st2.factor != 1.0

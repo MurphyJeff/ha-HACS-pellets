@@ -304,7 +304,8 @@ class PelletsManager:
         d = entry["data"]
         kind = entry["type"]
         if kind == model.ENTRY_FILL:
-            txt = f"remplissage {fmt_bags(d.get('bags', 0))} sac" + (" (plein)" if d.get("full") else "")
+            txt = f"remplissage {fmt_bags(d.get('bags', 0))} sac" + (" (plein)" if d.get("full") else "") + (
+                " (quantité estimée)" if d.get("measured") is False else "")
         elif kind == model.ENTRY_EMPTY:
             txt = "réservoir vide" + (" (auto)" if entry.get("source") == "auto" else "")
         elif kind == model.ENTRY_PURCHASE:

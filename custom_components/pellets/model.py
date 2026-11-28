@@ -227,7 +227,9 @@ def replay(
             kg = bags * bag
             state.home_bags -= bags
             if data.get("full"):
-                if anchor_ts is not None:
+                # measured=False : quantité inconnue (bouton « plein » sans quantité, estimation du modèle).
+                # Le réservoir est recalé à plein, mais la calibration est sautée : sinon le modèle se confirme lui-même.
+                if anchor_ts is not None and data.get("measured", True):
                     calibrate(ts, anchor_level + poured_since_anchor - max(cap - kg, 0.0))
                 level, anchor_ts, anchor_level, anchor_weight, poured_since_anchor = cap, ts, cap, 1.0, 0.0
             else:

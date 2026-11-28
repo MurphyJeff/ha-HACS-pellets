@@ -137,8 +137,13 @@ actions:
               data:
                 tag: pellets_alert
                 actions:
-                  - action: PELLETS_FULL
-                    title: "✅ Rempli au plein"
+                  - action: PELLETS_FULL_1
+                    title: "Plein · 1 sac"
+                  - action: PELLETS_FULL_075
+                    title: "Plein · ¾ sac"
+                  - action: URI
+                    title: "Autre…"
+                    uri: /pellets-poele/pellets
           - action: "{{ notify_info }}"
             data:
               message: "Poêle : réservoir bas, penser à remplir."
@@ -170,11 +175,20 @@ actions:
             data:
               message: "Dernière saisie annulée."
               data: {tag: pellets_entry}
+      # Plein avec la quantité réellement versée : recale le réservoir ET calibre le modèle.
+      - conditions: "{{ trigger.id == 'action' and trigger.event.data.action in ['PELLETS_FULL_1', 'PELLETS_FULL_075'] }}"
+        sequence:
+          - action: pellets.fill
+            data:
+              full: true
+              bags: "{{ 1 if trigger.event.data.action == 'PELLETS_FULL_1' else 0.75 }}"
+      # Ancien bouton (quantité inconnue) : recale le réservoir sans calibrer (sinon le modèle se confirme lui-même).
       - conditions: "{{ trigger.id == 'action' and trigger.event.data.action == 'PELLETS_FULL' }}"
         sequence:
           - action: pellets.fill
             data:
               full: true
+              measured: false
               bags: >
                 {{ ((state_attr(reservoir_sensor, 'sacs_pour_le_plein') | float(1)) * 20) | round(0) / 20 }}
       - conditions: "{{ trigger.id == 'action' and trigger.event.data.action == 'PELLETS_EMPTY_YES' }}"
@@ -187,9 +201,11 @@ actions:
             data: {bags: 1, full: false}
       - conditions: "{{ trigger.id == 'button_full' }}"
         sequence:
+          # Bouton physique : quantité inconnue, recalage sans calibration.
           - action: pellets.fill
             data:
               full: true
+              measured: false
               bags: >
                 {{ ((state_attr(reservoir_sensor, 'sacs_pour_le_plein') | float(1)) * 20) | round(0) / 20 }}
       # ------------------------------------------------------------- evening check
@@ -207,5 +223,10 @@ actions:
               data:
                 tag: pellets_alert
                 actions:
-                  - action: PELLETS_FULL
-                    title: "✅ Rempli au plein"
+                  - action: PELLETS_FULL_1
+                    title: "Plein · 1 sac"
+                  - action: PELLETS_FULL_075
+                    title: "Plein · ¾ sac"
+                  - action: URI
+                    title: "Autre…"
+                    uri: /pellets-poele/pellets

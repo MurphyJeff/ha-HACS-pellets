@@ -239,6 +239,10 @@
         "when": {
           "name": "Quand",
           "description": "Laisser vide pour maintenant."
+        },
+        "measured": {
+          "name": "Quantité mesurée",
+          "description": "Décoche si la quantité versée n'est pas connue (plein sans pesée) : le réservoir est recalé à plein sans recalibrer le modèle."
         }
       }
     },
@@ -359,6 +363,10 @@
         "full": {
           "name": "Jusqu'au plein",
           "description": "Rempli jusqu'au plein."
+        },
+        "measured": {
+          "name": "Quantité mesurée",
+          "description": "Faux : plein dont la quantité n'est pas connue, exclu de la calibration."
         }
       }
     },

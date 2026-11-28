@@ -25,7 +25,10 @@ BAGS = vol.All(vol.Coerce(float), vol.Range(min=0, max=1000))
 BASE = {vol.Optional("when"): cv.datetime}
 
 SERVICES: dict[str, vol.Schema] = {
-    "fill": vol.Schema({vol.Required("bags"): BAGS, vol.Optional("full", default=False): cv.boolean, **BASE}),
+    "fill": vol.Schema(
+        {vol.Required("bags"): BAGS, vol.Optional("full", default=False): cv.boolean,
+         vol.Optional("measured", default=True): cv.boolean, **BASE}
+    ),
     "mark_empty": vol.Schema(BASE),
     "purchase": vol.Schema(
         {
@@ -67,6 +70,7 @@ SERVICES: dict[str, vol.Schema] = {
             vol.Optional("when"): cv.datetime,
             vol.Optional("bags"): BAGS,
             vol.Optional("full"): cv.boolean,
+            vol.Optional("measured"): cv.boolean,
             vol.Optional("price_per_bag"): vol.Coerce(float),
             vol.Optional("total_eur"): vol.Coerce(float),
             vol.Optional("supplier_remaining"): BAGS,
